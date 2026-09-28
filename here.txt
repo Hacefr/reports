@@ -1,0 +1,120 @@
+================================================================================
+                    SERVER STAFF ROLES & COMMANDS REFERENCE
+================================================================================
+
+[!] RANK HIERARCHY OVERVIEW
+--------------------------------------------------------------------------------
+Rank        | Weight | Prefix        | Color  | Core Responsibility
+--------------------------------------------------------------------------------
+Owner       | 100    | [OWNER]       | &4 Dark Red | Full Control & Administration
+Moderator   | 60     | [MOD]         | &c Light Red| Full Enforcement (Bans/Surveillance)
+Helper      | 40     | [HELPER]      | &b Aqua     | Chat & Toxicity Defense (No Bans)
+Tester      | 20     | [TESTER]      | &6 Gold     | QA & Bug Hunting (No Mod Tools)
+Default     | 0      | None          | &7 Gray     | Regular Player
+--------------------------------------------------------------------------------
+
+
+================================================================================
+1. OWNER RANK (Weight 100)
+================================================================================
+Prefix: &4&l[OWNER] &r
+Duties: Full administration, application decisions, and server management.
+
+LUCKPERMS SETUP COMMANDS:
+  lp creategroup owner
+  lp group owner setweight 100
+  lp group owner meta setprefix 100 "&4&l[OWNER] &r"
+  lp group owner permission set * true
+
+ASSIGN TO PLAYER:
+  lp user <PlayerName> parent set owner
+  op <PlayerName>
+
+
+================================================================================
+2. MODERATOR RANK (Weight 60)
+================================================================================
+Prefix: &c&l[MOD] &r
+Duties: Enforcing rules, investigating reports, and punishing offenders with proof.
+
+LUCKPERMS SETUP COMMANDS:
+  lp creategroup moderator
+  lp group moderator setweight 60
+  lp group moderator meta setprefix 60 "&c&l[MOD] &r"
+  lp group moderator parent add helper
+
+PERMISSIONS TIED TO MODERATOR:
+  lp group moderator permission set essentials.ban true
+  lp group moderator permission set essentials.tempban true
+  lp group moderator permission set essentials.unban true
+  lp group moderator permission set essentials.tp true
+  lp group moderator permission set essentials.vanish true
+  lp group moderator permission set essentials.invsee true
+  lp group moderator permission set minecraft.command.ban true
+  lp group moderator permission set minecraft.command.ban-ip true
+
+ASSIGN TO PLAYER:
+  lp user <PlayerName> parent set moderator
+
+
+================================================================================
+3. HELPER RANK (Weight 40)
+================================================================================
+Prefix: &b&l[HELPER] &r
+Duties: Chat moderation, helping new players, stopping hate speech & scam links.
+Rule:   Helpers CANNOT ban or tempban.
+
+LUCKPERMS SETUP COMMANDS:
+  lp creategroup helper
+  lp group helper setweight 40
+  lp group helper meta setprefix 40 "&b&l[HELPER] &r"
+
+PERMISSIONS TIED TO HELPER:
+  lp group helper permission set essentials.mute true
+  lp group helper permission set essentials.tempmute true
+  lp group helper permission set essentials.kick true
+  lp group helper permission set minecraft.command.kick true
+  # Explicitly blocked commands:
+  lp group helper permission set essentials.ban false
+  lp group helper permission set essentials.tempban false
+  lp group helper permission set minecraft.command.ban false
+
+ASSIGN TO PLAYER:
+  lp user <PlayerName> parent set helper
+
+
+================================================================================
+4. TESTER RANK (Weight 20)
+================================================================================
+Prefix: &6&l[TESTER] &r
+Duties: Stress testing, finding and logging bugs before updates launch.
+Rule:   Zero moderation commands. Giving test items away = instant ban.
+Perk:   $1,000 in-game currency per valid bug reported.
+
+LUCKPERMS SETUP COMMANDS:
+  lp creategroup tester
+  lp group tester setweight 20
+  lp group tester meta setprefix 20 "&6&l[TESTER] &r"
+
+PERMISSIONS TIED TO TESTER:
+  # (No commands assigned yet - to be added when test world/items are ready)
+
+ASSIGN TO PLAYER:
+  lp user <PlayerName> parent set tester
+
+
+================================================================================
+5. USEFUL SERVER UTILITY COMMANDS
+================================================================================
+SKRIPT ANNOUNCER (Recruitment):
+  /staff start     - Enables automatic broadcast every 5 minutes.
+  /staff end       - Disables automatic broadcasts.
+  /staff now       - Instantly force-broadcasts recruitment to chat.
+
+TAB LIST FORMATTER:
+  /tabrefresh      - Force updates all Tab list prefixes for online players.
+
+CHECKING PLAYER RANKS:
+  lp user <PlayerName> info
+  lp user <PlayerName> parent remove <RankName>
+================================================================================
