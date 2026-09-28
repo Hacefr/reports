@@ -13,63 +13,129 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #141414; color: var(--mc-white); font-family: 'VT323', monospace;
-      font-size: 1.35rem; padding: 40px 15px;
+      font-size: 1.35rem; padding: 30px 15px;
     }
     .container { max-width: 950px; margin: 0 auto; }
     .mc-frame {
       background: var(--mc-gui-bg); border: 4px solid #000;
-      box-shadow: inset 4px 4px 0px #3d3d3d, inset -4px -4px 0px #111; padding: 30px;
+      box-shadow: inset 4px 4px 0px #3d3d3d, inset -4px -4px 0px #111; padding: 25px;
+      margin-bottom: 25px;
     }
-    h1 { font-family: 'Press Start 2P', monospace; font-size: 1.4rem; color: var(--mc-yellow); margin-bottom: 20px; }
+    h1, h2, h3 { font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px #000; }
+    h1 { font-size: 1.3rem; color: var(--mc-yellow); margin-bottom: 15px; }
+    h2 { font-size: 0.95rem; color: var(--mc-gold); margin: 20px 0 10px 0; border-bottom: 2px dashed #444; padding-bottom: 6px; }
     .btn {
       background: #737373; border: 3px solid; border-color: #dbdbdb #373737 #373737 #dbdbdb;
-      color: #fff; padding: 8px 14px; font-family: 'Press Start 2P', monospace; font-size: 0.65rem;
+      color: #fff; padding: 8px 12px; font-family: 'Press Start 2P', monospace; font-size: 0.65rem;
       cursor: pointer; text-decoration: none; display: inline-block;
     }
-    input { background: #000; border: 2px solid #555; color: #fff; padding: 8px; font-family: inherit; font-size: 1.2rem; }
-    .ticket { background: #111; border: 2px solid #000; padding: 15px; margin-bottom: 15px; }
-    .ticket-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 1.1rem; }
+    .btn:hover { background: #8b8b8b; }
+    .btn-green { background: #2e7d32; border-color: #66bb6a #1b5e20 #1b5e20 #66bb6a; }
+    .btn-red { background: #b71c1c; border-color: #ef5350 #7f0000 #7f0000 #ef5350; }
+    input, select {
+      background: #000; border: 2px solid #555; color: #fff; padding: 8px;
+      font-family: 'VT323', monospace; font-size: 1.25rem; margin-right: 8px;
+    }
+    .ticket { background: #111; border: 2px solid #000; padding: 15px; margin-bottom: 12px; }
+    .ticket-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 1.15rem; }
     .tag { font-family: 'Press Start 2P', monospace; font-size: 0.6rem; padding: 2px 6px; }
     .tag-open { background: #00AA00; color: #fff; }
     .tag-closed { background: #555555; color: #aaa; }
     .hidden { display: none; }
+    .roster-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1.2rem; }
+    .roster-table th, .roster-table td { border: 1px solid #333; padding: 8px; text-align: left; }
+    .roster-table th { background: #111; font-family: 'Press Start 2P', monospace; font-size: 0.65rem; color: var(--mc-yellow); }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="mc-frame">
+    
+    <!-- LOGIN VIEW -->
+    <div id="loginView" class="mc-frame">
+      <h1>// STAFF AUTHENTICATION</h1>
+      <div style="margin-bottom: 15px;">
+        <input type="text" id="username" placeholder="Username" />
+        <input type="password" id="password" placeholder="Password" />
+        <button class="btn" onclick="login()">LOGIN</button>
+      </div>
+      <p style="color: var(--mc-gray); font-size: 1.1rem;">Default: <strong>owner</strong> / <strong>admin123</strong></p>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboardView" class="hidden">
       
-      <!-- LOGIN VIEW -->
-      <div id="loginView">
-        <h1>// STAFF AUTHENTICATION</h1>
-        <div style="margin-bottom: 15px;">
-          <input type="text" id="username" placeholder="Username" />
-          <input type="password" id="password" placeholder="Password" />
-          <button class="btn" onclick="login()">LOGIN</button>
+      <!-- Top Status Header -->
+      <div class="mc-frame">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h1>// DISPATCH TERMINAL</h1>
+            <p>User: <span id="staffName" style="color: var(--mc-gold);"></span> | Rank: <span id="staffRole" style="color: var(--mc-aqua);"></span></p>
+          </div>
+          <div>
+            <a href="index.html" class="btn">REPORT FORM</a>
+            <button class="btn btn-red" onclick="logout()">LOGOUT</button>
+          </div>
         </div>
-        <p style="color: var(--mc-gray); font-size: 1.1rem;">Default owner account: <strong>owner</strong> / <strong>admin123</strong></p>
       </div>
 
-      <!-- DASHBOARD VIEW -->
-      <div id="dashboardView" class="hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <div>
-            <h1>// DISPATCH FEED</h1>
-            <p>Logged as: <span id="staffName" style="color: var(--mc-gold);"></span> | Rank: <span id="staffRole" style="color: var(--mc-aqua);"></span></p>
-          </div>
-          <div>
-            <a href="index.html" class="btn">SUBMIT PAGE</a>
-            <button class="btn" style="background:#b71c1c;" onclick="logout()">LOGOUT</button>
-          </div>
+      <!-- ============================================== -->
+      <!-- OWNER ONLY CONTROL PANEL (HIDDEN FROM MODS/TESTERS) -->
+      <!-- ============================================== -->
+      <div id="ownerPanel" class="mc-frame hidden" style="border-color: var(--mc-gold);">
+        <h1 style="color: var(--mc-gold);">// OWNER CONTROL DESK</h1>
+
+        <!-- 1. Change Owner Password -->
+        <h2>[+] CHANGE MY PASSWORD</h2>
+        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+          <input type="password" id="newOwnerPass" placeholder="Enter new password" style="flex: 1;" />
+          <button class="btn btn-green" onclick="changeOwnerPassword()">UPDATE PASSWORD</button>
         </div>
 
-        <div id="ticketFeed">Loading reports...</div>
+        <!-- 2. Register New Staff -->
+        <h2>[+] CREATE NEW STAFF ACCOUNT</h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
+          <input type="text" id="newStaffUser" placeholder="Staff Username" />
+          <input type="text" id="newStaffPass" placeholder="Initial Password" />
+          <select id="newStaffRole">
+            <option value="tester">QA TESTER</option>
+            <option value="helper">HELPER</option>
+            <option value="moderator">MODERATOR</option>
+            <option value="owner">CO-OWNER</option>
+          </select>
+          <button class="btn btn-green" onclick="createStaff()">CREATE ACCOUNT</button>
+        </div>
+
+        <!-- 3. Current Staff List -->
+        <h2>[+] CURRENT STAFF ROSTER</h2>
+        <table class="roster-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>USERNAME</th>
+              <th>ROLE</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="rosterList">
+            <!-- Loaded via JS -->
+          </tbody>
+        </table>
+      </div>
+      <!-- ============================================== -->
+
+      <!-- INCIDENT REPORTS FEED -->
+      <div class="mc-frame">
+        <h1>// TICKET DISPATCH FEED</h1>
+        <div id="ticketFeed">Scanning for reports...</div>
       </div>
 
     </div>
+
   </div>
 
   <script>
+    let currentUser = null;
+
     async function checkSession() {
       const res = await fetch('/api/session');
       const data = await res.json();
@@ -94,7 +160,7 @@
       if (data.success) {
         showDashboard(data.user);
       } else {
-        alert('Invalid login credentials');
+        alert('Invalid credentials');
       }
     }
 
@@ -104,13 +170,94 @@
     }
 
     function showDashboard(user) {
+      currentUser = user;
       document.getElementById('loginView').classList.add('hidden');
       document.getElementById('dashboardView').classList.remove('hidden');
       document.getElementById('staffName').textContent = user.username;
       document.getElementById('staffRole').textContent = user.role.toUpperCase();
+
+      // Only show the Owner Control Desk if you are the Owner
+      if (user.role === 'owner') {
+        document.getElementById('ownerPanel').classList.remove('hidden');
+        loadStaffRoster();
+      } else {
+        document.getElementById('ownerPanel').classList.add('hidden');
+      }
+
       loadReports();
     }
 
+    // --- OWNER ACTIONS ---
+    async function changeOwnerPassword() {
+      const pass = document.getElementById('newOwnerPass').value;
+      if (!pass) return alert('Enter a new password');
+      const res = await fetch('/api/owner/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pass })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Password successfully updated!');
+        document.getElementById('newOwnerPass').value = '';
+      } else {
+        alert(data.error);
+      }
+    }
+
+    async function createStaff() {
+      const user = document.getElementById('newStaffUser').value;
+      const pass = document.getElementById('newStaffPass').value;
+      const role = document.getElementById('newStaffRole').value;
+
+      if (!user || !pass) return alert('Fill in all fields');
+
+      const res = await fetch('/api/owner/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass, role: role })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Account created! You can now share credentials with ${user}`);
+        document.getElementById('newStaffUser').value = '';
+        document.getElementById('newStaffPass').value = '';
+        loadStaffRoster();
+      } else {
+        alert(data.error);
+      }
+    }
+
+    async function loadStaffRoster() {
+      const res = await fetch('/api/owner/staff');
+      const staff = await res.json();
+      const list = document.getElementById('rosterList');
+      list.innerHTML = staff.map(s => `
+        <tr>
+          <td>#${s.id}</td>
+          <td><strong>${s.username}</strong></td>
+          <td><span style="color:var(--mc-aqua);">${s.role.toUpperCase()}</span></td>
+          <td>
+            ${s.id === currentUser.id 
+              ? '<span style="color:var(--mc-gray);">[YOU]</span>' 
+              : `<button class="btn btn-red" onclick="deleteStaff(${s.id})">DEMOTE / DELETE</button>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteStaff(id) {
+      if (!confirm('Are you sure you want to demote and delete this account?')) return;
+      const res = await fetch(`/api/owner/staff/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        loadStaffRoster();
+      } else {
+        alert(data.error);
+      }
+    }
+
+    // --- REPORT ACTIONS ---
     async function loadReports() {
       const feed = document.getElementById('ticketFeed');
       feed.innerHTML = 'Scanning message board...';
