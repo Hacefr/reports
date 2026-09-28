@@ -2,7 +2,6 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 
 const app = express();
 const db = new sqlite3.Database('./reports.db');
@@ -37,10 +36,18 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Create default Owner account if it doesn't exist (User: owner / Pass: admin123)
+  // Default Owner Account (owner / admin123)
   const defaultPass = bcrypt.hashSync('admin123', 10);
   db.run(`INSERT OR IGNORE INTO users (username, password, role) VALUES ('owner', ?, 'owner')`, [defaultPass]);
 });
+
+// Middleware: Owner Only Guard
+function requireOwner(req, res, next) {
+  if (!req.session.user || req.session.user.role !== 'owner') {
+    return res.status(403).json({ error: 'Access denied: Owner only' });
+  }
+  next();
+}
 
 // --- PUBLIC: SUBMIT REPORT ---
 app.post('/api/reports', (req, res) => {
@@ -59,7 +66,7 @@ app.post('/api/reports', (req, res) => {
   );
 });
 
-// --- AUTH: STAFF LOGIN ---
+// --- AUTHENTICATION ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
@@ -87,35 +94,81 @@ app.get('/api/session', (req, res) => {
   }
 });
 
-// --- STAFF: GET FILTERED REPORTS ---
+// --- OWNER ONLY: USER MANAGEMENT ---
+
+// 1. Change Own Password
+app.post('/api/owner/change-password', requireOwner, (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 5) {
+    return res.status(400).json({ error: 'Password must be at least 5 characters' });
+  }
+  const hashed = bcrypt.hashSync(newPassword, 10);
+  db.run(`UPDATE users SET password = ? WHERE id = ?`, [hashed, req.session.user.id], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to update password' });
+    res.json({ success: true });
+  });
+});
+
+// 2. Get All Staff Accounts
+app.get('/api/owner/staff', requireOwner, (req, res) => {
+  db.all(`SELECT id, username, role FROM users ORDER BY id ASC`, (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows);
+  });
+});
+
+// 3. Create New Staff Account
+app.post('/api/owner/staff', requireOwner, (req, res) => {
+  const { username, password, role } = req.body;
+  const allowedRoles = ['tester', 'helper', 'moderator', 'owner'];
+  
+  if (!username || !password || !allowedRoles.includes(role)) {
+    return res.status(400).json({ error: 'Invalid staff details' });
+  }
+
+  const hashed = bcrypt.hashSync(password, 10);
+  db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username, hashed, role], function(err) {
+    if (err) return res.status(400).json({ error: 'Username already taken' });
+    res.json({ success: true, id: this.lastID });
+  });
+});
+
+// 4. Delete / Demote Staff
+app.delete('/api/owner/staff/:id', requireOwner, (req, res) => {
+  const targetId = req.params.id;
+  // Prevent deleting self
+  if (parseInt(targetId) === req.session.user.id) {
+    return res.status(400).json({ error: 'Cannot delete your own account' });
+  }
+  db.run(`DELETE FROM users WHERE id = ?`, [targetId], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete user' });
+    res.json({ success: true });
+  });
+});
+
+// --- STAFF TICKET ACTIONS ---
 app.get('/api/staff/reports', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
 
   const role = req.session.user.role;
   let query = '';
-  let params = [];
 
   if (role === 'owner') {
-    // Owner sees ALL reports (Open & Closed)
     query = `SELECT * FROM reports ORDER BY id DESC`;
   } else if (role === 'moderator') {
-    // Moderator sees Staff Abuse and Other reports
     query = `SELECT * FROM reports WHERE category IN ('staff_abuse', 'other') ORDER BY id DESC`;
   } else if (role === 'tester') {
-    // Tester sees ONLY bugs
     query = `SELECT * FROM reports WHERE category = 'bug' ORDER BY id DESC`;
   } else if (role === 'helper') {
-    // Helper sees Other/Player reports
     query = `SELECT * FROM reports WHERE category = 'other' ORDER BY id DESC`;
   }
 
-  db.all(query, params, (err, rows) => {
+  db.all(query, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database read error' });
     res.json(rows);
   });
 });
 
-// --- STAFF: CLOSE / REOPEN REPORT ---
 app.post('/api/staff/status', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
   const { id, status } = req.body;
@@ -127,4 +180,4 @@ app.post('/api/staff/status', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
