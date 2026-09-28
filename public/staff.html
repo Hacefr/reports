@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Staff Incident Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mc-gold: #FFAA00; --mc-yellow: #FFFF55; --mc-green: #55FF55;
+      --mc-red: #FF5555; --mc-aqua: #55FFFF; --mc-gray: #AAAAAA;
+      --mc-dark-gray: #555555; --mc-white: #FFFFFF; --mc-gui-bg: #212121;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #141414; color: var(--mc-white); font-family: 'VT323', monospace;
+      font-size: 1.35rem; padding: 40px 15px;
+    }
+    .container { max-width: 950px; margin: 0 auto; }
+    .mc-frame {
+      background: var(--mc-gui-bg); border: 4px solid #000;
+      box-shadow: inset 4px 4px 0px #3d3d3d, inset -4px -4px 0px #111; padding: 30px;
+    }
+    h1 { font-family: 'Press Start 2P', monospace; font-size: 1.4rem; color: var(--mc-yellow); margin-bottom: 20px; }
+    .btn {
+      background: #737373; border: 3px solid; border-color: #dbdbdb #373737 #373737 #dbdbdb;
+      color: #fff; padding: 8px 14px; font-family: 'Press Start 2P', monospace; font-size: 0.65rem;
+      cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    input { background: #000; border: 2px solid #555; color: #fff; padding: 8px; font-family: inherit; font-size: 1.2rem; }
+    .ticket { background: #111; border: 2px solid #000; padding: 15px; margin-bottom: 15px; }
+    .ticket-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 1.1rem; }
+    .tag { font-family: 'Press Start 2P', monospace; font-size: 0.6rem; padding: 2px 6px; }
+    .tag-open { background: #00AA00; color: #fff; }
+    .tag-closed { background: #555555; color: #aaa; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="mc-frame">
+      
+      <!-- LOGIN VIEW -->
+      <div id="loginView">
+        <h1>// STAFF AUTHENTICATION</h1>
+        <div style="margin-bottom: 15px;">
+          <input type="text" id="username" placeholder="Username" />
+          <input type="password" id="password" placeholder="Password" />
+          <button class="btn" onclick="login()">LOGIN</button>
+        </div>
+        <p style="color: var(--mc-gray); font-size: 1.1rem;">Default owner account: <strong>owner</strong> / <strong>admin123</strong></p>
+      </div>
+
+      <!-- DASHBOARD VIEW -->
+      <div id="dashboardView" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div>
+            <h1>// DISPATCH FEED</h1>
+            <p>Logged as: <span id="staffName" style="color: var(--mc-gold);"></span> | Rank: <span id="staffRole" style="color: var(--mc-aqua);"></span></p>
+          </div>
+          <div>
+            <a href="index.html" class="btn">SUBMIT PAGE</a>
+            <button class="btn" style="background:#b71c1c;" onclick="logout()">LOGOUT</button>
+          </div>
+        </div>
+
+        <div id="ticketFeed">Loading reports...</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    async function checkSession() {
+      const res = await fetch('/api/session');
+      const data = await res.json();
+      if (data.loggedIn) {
+        showDashboard(data.user);
+      } else {
+        document.getElementById('loginView').classList.remove('hidden');
+        document.getElementById('dashboardView').classList.add('hidden');
+      }
+    }
+
+    async function login() {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showDashboard(data.user);
+      } else {
+        alert('Invalid login credentials');
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      location.reload();
+    }
+
+    function showDashboard(user) {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('dashboardView').classList.remove('hidden');
+      document.getElementById('staffName').textContent = user.username;
+      document.getElementById('staffRole').textContent = user.role.toUpperCase();
+      loadReports();
+    }
+
+    async function loadReports() {
+      const feed = document.getElementById('ticketFeed');
+      feed.innerHTML = 'Scanning message board...';
+      const res = await fetch('/api/staff/reports');
+      const reports = await res.json();
+
+      if (!reports.length) {
+        feed.innerHTML = '<p style="color: var(--mc-gray);">No reports active in your queue.</p>';
+        return;
+      }
+
+      feed.innerHTML = reports.map(r => `
+        <div class="ticket">
+          <div class="ticket-header">
+            <span>[#${r.id}] <strong>${r.category.toUpperCase()}</strong> | From: ${r.player_ign} | Target: ${r.target_ign}</span>
+            <span class="tag ${r.status === 'OPEN' ? 'tag-open' : 'tag-closed'}">${r.status}</span>
+          </div>
+          <p style="margin: 8px 0; color: #ddd;">${r.description}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <small style="color: var(--mc-dark-gray); font-size: 1rem;">Logged: ${r.created_at}</small>
+            <button class="btn" onclick="toggleStatus(${r.id}, '${r.status === 'OPEN' ? 'CLOSED' : 'OPEN'}')">
+              MARK AS ${r.status === 'OPEN' ? 'CLOSED' : 'RE-OPEN'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function toggleStatus(id, newStatus) {
+      await fetch('/api/staff/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus })
+      });
+      loadReports();
+    }
+
+    checkSession();
+  </script>
+</body>
+</html>
