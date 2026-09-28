@@ -6,18 +6,21 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const db = new sqlite3.Database('./reports.db');
 
+// Secure password pulled directly from Render's private Environment Variables
+const OWNER_PASS = process.env.OWNER_PASSWORD || 'EmergencySecureFallbackKey987!';
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.use(session({
-  secret: 'minecraft-secret-key-change-this',
+  secret: 'mc-reports-secret-vault-key',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// Initialize DB Tables
+// Initialize DB Tables & Lock Down Owner Password
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,9 +39,15 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Default Owner Account (owner / admin123)
-  const defaultPass = bcrypt.hashSync('admin123', 10);
-  db.run(`INSERT OR IGNORE INTO users (username, password, role) VALUES ('owner', ?, 'owner')`, [defaultPass]);
+  // Automatically enforce your private password on startup/restarts
+  const hashed = bcrypt.hashSync(OWNER_PASS, 10);
+  db.get(`SELECT id FROM users WHERE username = 'owner'`, (err, row) => {
+    if (!row) {
+      db.run(`INSERT INTO users (username, password, role) VALUES ('owner', ?, 'owner')`, [hashed]);
+    } else {
+      db.run(`UPDATE users SET password = ? WHERE username = 'owner'`, [hashed]);
+    }
+  });
 });
 
 // Middleware: Owner Only Guard
@@ -95,8 +104,6 @@ app.get('/api/session', (req, res) => {
 });
 
 // --- OWNER ONLY: USER MANAGEMENT ---
-
-// 1. Change Own Password
 app.post('/api/owner/change-password', requireOwner, (req, res) => {
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 5) {
@@ -109,7 +116,6 @@ app.post('/api/owner/change-password', requireOwner, (req, res) => {
   });
 });
 
-// 2. Get All Staff Accounts
 app.get('/api/owner/staff', requireOwner, (req, res) => {
   db.all(`SELECT id, username, role FROM users ORDER BY id ASC`, (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
@@ -117,7 +123,6 @@ app.get('/api/owner/staff', requireOwner, (req, res) => {
   });
 });
 
-// 3. Create New Staff Account
 app.post('/api/owner/staff', requireOwner, (req, res) => {
   const { username, password, role } = req.body;
   const allowedRoles = ['tester', 'helper', 'moderator', 'owner'];
@@ -133,10 +138,8 @@ app.post('/api/owner/staff', requireOwner, (req, res) => {
   });
 });
 
-// 4. Delete / Demote Staff
 app.delete('/api/owner/staff/:id', requireOwner, (req, res) => {
   const targetId = req.params.id;
-  // Prevent deleting self
   if (parseInt(targetId) === req.session.user.id) {
     return res.status(400).json({ error: 'Cannot delete your own account' });
   }
@@ -180,4 +183,4 @@ app.post('/api/staff/status', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`Reports server listening on port ${PORT}`));
