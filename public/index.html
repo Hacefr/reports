@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Server Reports Desk</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mc-gold: #FFAA00; --mc-yellow: #FFFF55; --mc-green: #55FF55;
+      --mc-red: #FF5555; --mc-aqua: #55FFFF; --mc-gray: #AAAAAA;
+      --mc-dark-gray: #555555; --mc-white: #FFFFFF; --mc-gui-bg: #212121;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #141414; color: var(--mc-white); font-family: 'VT323', monospace;
+      font-size: 1.35rem; padding: 40px 15px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    .mc-frame {
+      background: var(--mc-gui-bg); border: 4px solid #000;
+      box-shadow: inset 4px 4px 0px #3d3d3d, inset -4px -4px 0px #111; padding: 30px;
+    }
+    .nav { display: flex; justify-content: space-between; margin-bottom: 20px; }
+    .nav a { color: var(--mc-aqua); text-decoration: none; font-family: 'Press Start 2P', monospace; font-size: 0.7rem; }
+    h1 { font-family: 'Press Start 2P', monospace; font-size: 1.4rem; color: var(--mc-yellow); margin-bottom: 15px; text-shadow: 2px 2px #000; text-align: center; }
+    .field { margin-bottom: 18px; }
+    label { display: block; margin-bottom: 6px; font-family: 'Press Start 2P', monospace; font-size: 0.7rem; color: var(--mc-gold); }
+    input, select, textarea {
+      width: 100%; background: #000; border: 3px solid var(--mc-dark-gray); color: #fff;
+      font-family: 'VT323', monospace; font-size: 1.3rem; padding: 10px;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--mc-white); outline: none; }
+    .btn {
+      background: #b71c1c; border: 4px solid; border-color: #ef5350 #7f0000 #7f0000 #ef5350;
+      color: #fff; padding: 12px; font-family: 'Press Start 2P', monospace; font-size: 0.8rem;
+      cursor: pointer; width: 100%; margin-top: 10px;
+    }
+    .btn:hover { background: #c62828; }
+    #msg { margin-top: 15px; text-align: center; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="mc-frame">
+      <div class="nav">
+        <a href="staff.html">[ STAFF LOGIN PORTAL ]</a>
+      </div>
+      <h1>// FILE AN INCIDENT OR BUG</h1>
+      <form id="reportForm">
+        <div class="field">
+          <label>REPORT CATEGORY</label>
+          <select id="category" required>
+            <option value="bug">BUG REPORT (TESTERS / DEV)</option>
+            <option value="staff_abuse">STAFF MISCONDUCT / ABUSE (MODS / OWNER)</option>
+            <option value="other">PLAYER TOXICITY / OTHER (HELPERS / MODS)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>YOUR IN-GAME NAME</label>
+          <input type="text" id="player_ign" placeholder="e.g. Steve" required />
+        </div>
+        <div class="field">
+          <label>TARGET / ACCUSED PLAYER (IF APPLICABLE)</label>
+          <input type="text" id="target_ign" placeholder="e.g. BadPlayer123 or None" />
+        </div>
+        <div class="field">
+          <label>DETAILS & EVIDENCE LINKS</label>
+          <textarea id="description" rows="5" placeholder="Describe the bug or offense with imgur/video links..." required></textarea>
+        </div>
+        <button type="submit" class="btn">SUBMIT REPORT</button>
+      </form>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('reportForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = 'Submitting...';
+
+      const data = {
+        category: document.getElementById('category').value,
+        player_ign: document.getElementById('player_ign').value,
+        target_ign: document.getElementById('target_ign').value,
+        description: document.getElementById('description').value
+      };
+
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        msg.style.color = '#55FF55';
+        msg.textContent = `[SUCCESS] Ticket #${result.ticketId} dispatched to assigned staff.`;
+        document.getElementById('reportForm').reset();
+      } else {
+        msg.style.color = '#FF5555';
+        msg.textContent = '[ERROR] Failed to submit report.';
+      }
+    });
+  </script>
+</body>
+</html>
